@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fully transparent (no path drawn); explicitly overrides Android
+     12+'s automatic splash icon, which otherwise auto-derives a STATIC
+     icon from android:icon and shows it before Flutter loads, regardless
+     of drawable/launch_background.xml. That created a second, redundant
+     phase before the branded splash. This device's OEM
+     Android skin doesn't play windowSplashScreenAnimatedIcon animations at
+     all (confirmed by testing an unmissable 360-degree rotation; zero
+     motion), so rather than show a static icon here, we show nothing and
+     let the branded launch_background + BrandSplash be the only visible logo. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="1dp"
+    android:height="1dp"
+    android:viewportWidth="1"
+    android:viewportHeight="1" />

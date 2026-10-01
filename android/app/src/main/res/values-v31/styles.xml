@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ (API 31+) always shows its own auto-derived splash icon
+         (from android:icon) before Flutter loads unless overridden here.
+         Pointing it at a transparent drawable suppresses that small app
+         icon, so the only logo ever shown is the static branded splash
+         from drawable/launch_background.xml (which this device's OEM skin
+         renders) and Flutter's identical BrandSplash. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <!-- Skips Android's native "starting window" entirely: this
+             device's OEM skin otherwise shows it as a separate first
+             splash phase before Flutter's BrandSplash. -->
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/blank_splash_icon</item>
+    </style>
+</resources>

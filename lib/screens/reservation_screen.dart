@@ -45,9 +45,13 @@ const _weddingRequirementChecklist = {
   'sponsors-list': 'Listahan ng Ninong at Ninang (apat na pares na minimum)',
 };
 
+// Same keys, labels and order as church-web's $funeralMaritalStatusOptions.
 const _funeralMaritalStatusOptions = {
-  'married_not_baptized': 'Married (not baptized in the church)',
   'single': 'Single / Unmarried',
+  'married_baptized': 'Married (baptized in the church)',
+  'married_not_baptized': 'Married (not baptized in the church)',
+  'widowed': 'Widowed',
+  'annulled': 'Annulled',
 };
 
 const _baptismNotes = [
@@ -434,11 +438,15 @@ class _ReservationScreenState extends State<ReservationScreen> {
   /// `data-funeral-required` attributes on church-web's own fields.
   String? _validateExtra() {
     if (_selectedType == 'wedding') {
-      if (_groomFirst.text.trim().isEmpty || _groomLast.text.trim().isEmpty) {
-        return "Please enter the groom's first and last name.";
+      if (_groomFirst.text.trim().isEmpty ||
+          _groomMiddle.text.trim().isEmpty ||
+          _groomLast.text.trim().isEmpty) {
+        return "Please enter the groom's first, middle and last name.";
       }
-      if (_brideFirst.text.trim().isEmpty || _brideLast.text.trim().isEmpty) {
-        return "Please enter the bride's first and last name.";
+      if (_brideFirst.text.trim().isEmpty ||
+          _brideMiddle.text.trim().isEmpty ||
+          _brideLast.text.trim().isEmpty) {
+        return "Please enter the bride's first, middle and last name.";
       }
       if (_seminarDate == null) return 'Please select a seminar date.';
       if (_weddingRequirements.length < _weddingRequirementChecklist.length) {
@@ -448,8 +456,10 @@ class _ReservationScreenState extends State<ReservationScreen> {
         return 'Please upload both wedding requirement documents.';
       }
     } else if (_selectedType == 'baptism') {
-      if (_childFirst.text.trim().isEmpty || _childLast.text.trim().isEmpty) {
-        return "Please enter the child's first and last name.";
+      if (_childFirst.text.trim().isEmpty ||
+          _childMiddle.text.trim().isEmpty ||
+          _childLast.text.trim().isEmpty) {
+        return "Please enter the child's first, middle and last name.";
       }
       if (_childDob == null) return "Please enter the child's date of birth.";
       if (_fatherName.text.trim().isEmpty || _motherName.text.trim().isEmpty) {
@@ -578,11 +588,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          const _RedSectionLabel('Choose a sacrament'),
+                          const _RedSectionLabel('Sacrament'),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              for (final t in const ['wedding', 'baptism', 'funeral']) ...[
+                              for (final t in const ['baptism', 'wedding', 'funeral']) ...[
                                 Expanded(
                                   child: _TypeCard(
                                     type: t,
@@ -666,7 +676,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
                                   child: BoxedField(
                                     controller: _middleName,
                                     label: 'MIDDLE NAME',
-                                    hint: 'Optional',
+                                    required: true,
+                                    hint: 'Middle name',
+                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -1217,41 +1229,53 @@ class _ReservationScreenState extends State<ReservationScreen> {
       );
 
       final notes = _notes.text.trim();
+      // Same shape church-web's ReservationController::store() saves: the
+      // type-specific info nested under details.baptism / .wedding /
+      // .funeral with split name parts, which is what the admin panel's
+      // detail view and the notification emails read.
       final details = <String, dynamic>{
         'name': fullName,
-        'first_name': _firstName.text.trim(),
-        'middle_name': _middleName.text.trim(),
-        'last_name': _lastName.text.trim(),
-        'suffix': _suffix.text.trim(),
         'email': email,
         'phone': _phone.text.trim(),
-        'notes': notes,
+        if (notes.isNotEmpty) 'notes': notes,
       };
-      if (type == 'wedding') {
-        details.addAll({
-          'bride_name': _fullName(_brideFirst.text, _brideMiddle.text, _brideLast.text, _brideSuffix.text),
-          'groom_name': _fullName(_groomFirst.text, _groomMiddle.text, _groomLast.text, _groomSuffix.text),
-          'seminar_date': _seminarDate == null ? null : _dateKey(_seminarDate!),
-          'sacrament_details': _sacramentDetails.text.trim(),
-          'requirements_confirmed': _weddingRequirements.toList(),
-        });
-      } else if (type == 'funeral') {
-        details.addAll({
-          'deceased_name': _fullName(
-            _deceasedFirst.text,
-            _deceasedMiddle.text,
-            _deceasedLast.text,
-            _deceasedSuffix.text,
-          ),
-          'marital_status': _maritalStatus,
-        });
-      } else if (type == 'baptism') {
-        details.addAll({
-          'child_name': _fullName(_childFirst.text, _childMiddle.text, _childLast.text, _childSuffix.text),
-          'child_dob': _childDob == null ? null : _dateKey(_childDob!),
+      if (type == 'baptism') {
+        final childBase = [_childFirst.text, _childMiddle.text, _childLast.text]
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .join(' ');
+        final childSuffix = _childSuffix.text.trim();
+        details['baptism'] = {
+          'child_first': _childFirst.text.trim(),
+          'child_middle': _childMiddle.text.trim(),
+          'child_last': _childLast.text.trim(),
+          'child_suffix': childSuffix,
+          'child_name': childSuffix.isEmpty ? childBase : '$childBase, $childSuffix',
+          'child_dob': _childDob == null ? '' : _dateKey(_childDob!),
           'father_name': _fatherName.text.trim(),
           'mother_name': _motherName.text.trim(),
-        });
+        };
+      } else if (type == 'wedding') {
+        details['wedding'] = {
+          'groom_first': _groomFirst.text.trim(),
+          'groom_middle': _groomMiddle.text.trim(),
+          'groom_last': _groomLast.text.trim(),
+          'groom_suffix': _groomSuffix.text.trim(),
+          'bride_first': _brideFirst.text.trim(),
+          'bride_middle': _brideMiddle.text.trim(),
+          'bride_last': _brideLast.text.trim(),
+          'bride_suffix': _brideSuffix.text.trim(),
+          'seminar_date': _seminarDate == null ? '' : _dateKey(_seminarDate!),
+          'sacrament_details': _sacramentDetails.text.trim(),
+        };
+      } else if (type == 'funeral') {
+        details['funeral'] = {
+          'deceased_first': _deceasedFirst.text.trim(),
+          'deceased_middle': _deceasedMiddle.text.trim(),
+          'deceased_last': _deceasedLast.text.trim(),
+          'deceased_suffix': _deceasedSuffix.text.trim(),
+          'marital_status': _maritalStatus ?? '',
+        };
       }
 
       final inserted = await client
@@ -1461,7 +1485,9 @@ class _TypeCard extends StatelessWidget {
             typeIcon(type, size: 22, color: accent),
             const SizedBox(height: 8),
             Text(
-              typeLabel(type),
+              // church-web's picker calls this one "Funeral Mass".
+              type == 'funeral' ? 'Funeral Mass' : typeLabel(type),
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 12.5,
@@ -1592,7 +1618,9 @@ class _PersonNameFields extends StatelessWidget {
       Expanded(child: BoxedField(controller: last, label: 'LAST', hint: 'Last')),
     ];
     final row2 = [
-      Expanded(child: BoxedField(controller: middle, label: 'MIDDLE', hint: 'Optional')),
+      // Required, matching church-web (groom, bride and child middle names
+      // are all data-*-required there).
+      Expanded(child: BoxedField(controller: middle, label: 'MIDDLE', required: true, hint: 'Middle')),
       const SizedBox(width: 10),
       Expanded(child: BoxedField(controller: suffix, label: 'SUFFIX', hint: 'Optional')),
     ];

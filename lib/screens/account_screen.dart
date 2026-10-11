@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../security/app_lock.dart';
 import '../security/secure_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
@@ -27,7 +26,6 @@ class _AccountScreenState extends State<AccountScreen> with SecureScreenMixin {
   bool _deleting = false;
 
   Future<void> _copyData(Map<String, dynamic> data) async {
-    if (!await AppLock.confirm('Copy your personal data')) return;
     await Clipboard.setData(
       ClipboardData(text: const JsonEncoder.withIndent('  ').convert(data)),
     );
@@ -58,7 +56,6 @@ class _AccountScreenState extends State<AccountScreen> with SecureScreenMixin {
       ),
     );
     if (confirmed != true) return;
-    if (!await AppLock.confirm('Confirm account deletion')) return;
 
     setState(() => _deleting = true);
     try {

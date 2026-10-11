@@ -17,7 +17,6 @@ import '../widgets/logout_button.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/sacrament_badge.dart';
 import '../security/secure_screen.dart';
-import '../security/app_lock.dart';
 import '../widgets/account_button.dart';
 
 /// Mirrors church-web's Reservation flow (resources/views/reservation/index.blade.php
@@ -1190,8 +1189,6 @@ class _ReservationScreenState extends State<ReservationScreen>
       setSheetState(() => _extraError = extraError);
       return;
     }
-    // Sensitive action: confirm it's really the phone's owner.
-    if (!await AppLock.confirm('Confirm your reservation request')) return;
     setSheetState(() {
       _extraError = null;
       _submitting = true;

@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'screens/auth_gate.dart';
 import 'screens/reset_password_screen.dart';
-import 'security/app_lock.dart';
 import 'security/rasp_guard.dart';
 import 'security/secure_session_storage.dart';
 import 'theme/app_theme.dart';
@@ -70,17 +69,10 @@ class _ParishSchedAppState extends State<ParishSchedApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: const AuthGate(),
-      // Security layers over every screen: tamper/root response, then the
-      // fingerprint/PIN app lock for saved logins.
+      // Tamper/root response over every screen.
       builder: (context, child) => RaspGate(
         navigatorKey: navigatorKey,
-        child: AppLockGate(
-          onSignedOut: () => navigatorKey.currentState?.pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const AuthGate()),
-            (_) => false,
-          ),
-          child: child!,
-        ),
+        child: child!,
       ),
     );
   }

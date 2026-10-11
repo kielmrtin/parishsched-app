@@ -2,13 +2,11 @@ package org.stjohnbaptistparish.parishsched
 
 import android.os.Bundle
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-// FlutterFragmentActivity (not FlutterActivity) is required by local_auth
-// for the fingerprint / device-PIN prompt.
-class MainActivity : FlutterFragmentActivity() {
+class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Overrides this activity's own enter transition with "no

@@ -59,9 +59,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
       'How we protect it',
       [
         'All connections are encrypted (HTTPS). On your phone, your login is '
-            'stored encrypted with a key held by Android, screens with personal '
-            'information block screenshots, and the app can be unlocked only '
-            "with your phone's fingerprint or PIN.",
+            'stored encrypted with a key held by Android, and screens with '
+            'personal information block screenshots and screen recording.',
       ],
     ),
     (

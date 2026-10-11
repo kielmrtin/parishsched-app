@@ -12,7 +12,6 @@ import '../widgets/sacrament_badge.dart';
 import 'inquire_screen.dart';
 import 'reservation_screen.dart';
 import '../security/secure_screen.dart';
-import '../security/app_lock.dart';
 import '../widgets/account_button.dart';
 
 /// Mirrors church-web's My Reservations page
@@ -75,8 +74,6 @@ class _MyReservationsScreenState extends State<MyReservationsScreen>
       builder: (context) => _CancelReasonDialog(),
     );
     if (reason == null) return; // dismissed
-    // Sensitive action: confirm it's really the phone's owner.
-    if (!await AppLock.confirm('Confirm cancellation request')) return;
 
     try {
       await Supabase.instance.client

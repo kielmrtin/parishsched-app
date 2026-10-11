@@ -5,6 +5,8 @@ import '../widgets/app_alert.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_hero.dart';
 import '../widgets/pill_button.dart';
+import '../security/input_validation.dart';
+import '../security/secure_screen.dart';
 
 /// Mirrors church-web's Forgot Password page
 /// (resources/views/auth/forgot-password.blade.php): same hero copy, same
@@ -20,7 +22,8 @@ class ForgotPasswordScreen extends StatefulWidget {
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
+    with SecureScreenMixin {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   bool _loading = false;
@@ -113,11 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             hint: 'name@example.com',
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.done,
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) return 'Email is required';
-                              if (!v.contains('@')) return 'Enter a valid email';
-                              return null;
-                            },
+                            validator: InputValidation.email,
                           ),
                           const SizedBox(height: 22),
                           PillButton(

@@ -11,6 +11,7 @@ import 'inquire_screen.dart';
 import 'my_reservations_screen.dart';
 import 'reservation_screen.dart';
 import 'schedule_screen.dart';
+import '../widgets/account_button.dart';
 
 /// Mirrors church-web's real home page (resources/views/home.blade.php):
 /// welcome hero, quick parish info, live announcements from Supabase
@@ -90,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('ParishSched'),
-        actions: const [NotificationBell(), SizedBox(width: 4), LogoutButton()],
+        actions: const [AccountButton(), NotificationBell(), SizedBox(width: 4), LogoutButton()],
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,

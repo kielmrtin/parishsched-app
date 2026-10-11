@@ -5,6 +5,8 @@ import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_alert.dart';
 import '../widgets/boxed_field.dart';
+import '../security/input_validation.dart';
+import '../security/secure_screen.dart';
 
 /// Shown when the app catches the `parishsched://reset-callback` deep link
 /// from the password-reset email. supabase_flutter has already exchanged the
@@ -53,7 +55,8 @@ class _ResetPasswordCard extends StatefulWidget {
   State<_ResetPasswordCard> createState() => _ResetPasswordCardState();
 }
 
-class _ResetPasswordCardState extends State<_ResetPasswordCard> {
+class _ResetPasswordCardState extends State<_ResetPasswordCard>
+    with SecureScreenMixin {
   final _formKey = GlobalKey<FormState>();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
@@ -151,14 +154,10 @@ class _ResetPasswordCardState extends State<_ResetPasswordCard> {
               BoxedField(
                 controller: _password,
                 label: 'New Password',
-                hint: 'Min. 8 characters',
+                hint: 'Min. 8 characters, a letter and a number',
                 obscureText: true,
                 textInputAction: TextInputAction.next,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Password is required';
-                  if (v.length < 8) return 'Must be at least 8 characters';
-                  return null;
-                },
+                validator: InputValidation.newPassword,
               ),
               const SizedBox(height: 14),
               BoxedField(

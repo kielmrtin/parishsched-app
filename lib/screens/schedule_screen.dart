@@ -9,6 +9,7 @@ import '../widgets/notification_bell.dart';
 import '../widgets/sacrament_badge.dart';
 import 'inquire_screen.dart';
 import 'reservation_screen.dart';
+import '../widgets/account_button.dart';
 
 /// Mirrors church-web's static Schedule page
 /// (resources/views/schedule/index.blade.php): the same sacrament time
@@ -91,7 +92,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       appBar: AppBar(
         title: const Text('ParishSched'),
         automaticallyImplyLeading: false,
-        actions: const [NotificationBell(), SizedBox(width: 4), LogoutButton()],
+        actions: const [AccountButton(), NotificationBell(), SizedBox(width: 4), LogoutButton()],
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.schedule),
       body: SingleChildScrollView(

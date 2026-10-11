@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/sacrament_windows.dart';
+import '../security/input_validation.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_alert.dart';
@@ -13,6 +16,9 @@ import '../widgets/hero_wave.dart';
 import '../widgets/logout_button.dart';
 import '../widgets/notification_bell.dart';
 import '../widgets/sacrament_badge.dart';
+import '../security/secure_screen.dart';
+import '../security/app_lock.dart';
+import '../widgets/account_button.dart';
 
 /// Mirrors church-web's Reservation flow (resources/views/reservation/index.blade.php
 /// + ReservationController) as closely as a mobile form allows: the same
@@ -28,6 +34,13 @@ import '../widgets/sacrament_badge.dart';
 /// Webhook fires on every `reservations` INSERT (from either this app or
 /// the website) and a small Laravel endpoint sends them from there, so no
 /// Flutter-side change is needed for this screen to trigger them.
+/// A picked, already-validated upload (see [InputValidation.document]).
+class PickedDocument {
+  const PickedDocument(this.name, this.bytes);
+  final String name;
+  final Uint8List bytes;
+}
+
 class ReservationScreen extends StatefulWidget {
   const ReservationScreen({super.key});
 
@@ -67,7 +80,8 @@ const _typeSubtitles = {
   'funeral': 'Honoring a life lived',
 };
 
-class _ReservationScreenState extends State<ReservationScreen> {
+class _ReservationScreenState extends State<ReservationScreen>
+    with SecureScreenMixin {
   final _formKey = GlobalKey<FormState>();
 
   // Applicant
@@ -91,8 +105,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
   DateTime? _seminarDate;
   final _sacramentDetails = TextEditingController();
   final Set<String> _weddingRequirements = {};
-  PlatformFile? _weddingFile1;
-  PlatformFile? _weddingFile2;
+  PickedDocument? _weddingFile1;
+  PickedDocument? _weddingFile2;
 
   // Funeral
   final _deceasedFirst = TextEditingController();
@@ -100,7 +114,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
   final _deceasedLast = TextEditingController();
   final _deceasedSuffix = TextEditingController();
   String? _maritalStatus;
-  PlatformFile? _funeralFile;
+  PickedDocument? _funeralFile;
 
   // Baptism
   final _childFirst = TextEditingController();
@@ -110,7 +124,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
   DateTime? _childDob;
   final _fatherName = TextEditingController();
   final _motherName = TextEditingController();
-  PlatformFile? _baptismFile;
+  PickedDocument? _baptismFile;
 
   DateTime? _selectedDate;
   String? _selectedType;
@@ -423,20 +437,69 @@ class _ReservationScreenState extends State<ReservationScreen> {
     _extraError = null;
   }
 
-  Future<PlatformFile?> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
+  /// Picks one document and validates it (type, 5MB limit, real file
+  /// contents) before it's accepted; shows an alert and returns null if not.
+  Future<PickedDocument?> _pickFile() async {
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
-      withData: true,
+      allowedExtensions: InputValidation.allowedExtensions,
     );
-    if (result == null || result.files.isEmpty) return null;
-    return result.files.first;
+    if (file == null) return null;
+    final size = file.lengthSync() ?? await file.length();
+    String? error;
+    Uint8List? bytes;
+    if (size != null && size > InputValidation.maxUploadBytes) {
+      error = 'Files must be 5MB or smaller.';
+    } else {
+      bytes = await file.readAsBytes();
+      error = InputValidation.document(file.name, bytes);
+    }
+    if (error != null) {
+      if (mounted) {
+        await showAppAlert(
+          context,
+          type: AppAlertType.error,
+          title: 'File Not Accepted',
+          message: error,
+        );
+      }
+      return null;
+    }
+    return PickedDocument(file.name, bytes!);
   }
 
   /// Validates the parts of the form a plain [Form] can't (files, checkbox
   /// groups, dropdowns) — mirrors the `data-wedding-required` /
   /// `data-funeral-required` attributes on church-web's own fields.
   String? _validateExtra() {
+    // Format/length check on every type-specific name field that has text
+    // (emptiness of the required ones is checked per type below).
+    final names = <String, TextEditingController>{
+      if (_selectedType == 'wedding') ...{
+        "Groom's name": _groomFirst, "Groom's middle name": _groomMiddle,
+        "Groom's last name": _groomLast, "Groom's suffix": _groomSuffix,
+        "Bride's name": _brideFirst, "Bride's middle name": _brideMiddle,
+        "Bride's last name": _brideLast, "Bride's suffix": _brideSuffix,
+      },
+      if (_selectedType == 'baptism') ...{
+        "Child's name": _childFirst, "Child's middle name": _childMiddle,
+        "Child's last name": _childLast, "Child's suffix": _childSuffix,
+        "Father's name": _fatherName, "Mother's name": _motherName,
+      },
+      if (_selectedType == 'funeral') ...{
+        "Deceased's name": _deceasedFirst, "Deceased's middle name": _deceasedMiddle,
+        "Deceased's last name": _deceasedLast, "Deceased's suffix": _deceasedSuffix,
+      },
+    };
+    for (final e in names.entries) {
+      if (InputValidation.name(e.value.text, required: false) != null) {
+        return '${e.key} can only contain letters (max ${InputValidation.maxNameLength} characters).';
+      }
+    }
+    if (_sacramentDetails.text.trim().length > InputValidation.maxNotesLength) {
+      return 'Kumpisal / Kumpil / Binyag details is too long.';
+    }
+
     if (_selectedType == 'wedding') {
       if (_groomFirst.text.trim().isEmpty ||
           _groomMiddle.text.trim().isEmpty ||
@@ -547,7 +610,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                       .toList();
             final readyToSubmit = _selectedType != null && _selectedTime != null;
 
-            Future<void> pickInto(void Function(PlatformFile) assign) async {
+            Future<void> pickInto(void Function(PickedDocument) assign) async {
               final f = await _pickFile();
               if (f != null) setSheetState(() => assign(f));
             }
@@ -654,7 +717,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                                     label: 'FIRST NAME',
                                     required: true,
                                     hint: 'First name',
-                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                    validator: InputValidation.name,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -664,7 +727,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                                     label: 'LAST NAME',
                                     required: true,
                                     hint: 'Last name',
-                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                    validator: InputValidation.name,
                                   ),
                                 ),
                               ],
@@ -678,7 +741,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                                     label: 'MIDDLE NAME',
                                     required: true,
                                     hint: 'Middle name',
-                                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                    validator: InputValidation.name,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -698,11 +761,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                               required: true,
                               hint: 'name@example.com',
                               keyboardType: TextInputType.emailAddress,
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Please enter your email.';
-                                if (!v.contains('@')) return 'Please enter a valid email.';
-                                return null;
-                              },
+                              validator: InputValidation.email,
                             ),
                             const SizedBox(height: 16),
                             BoxedField(
@@ -711,9 +770,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                               required: true,
                               hint: '(042) 545-9244',
                               keyboardType: TextInputType.phone,
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? 'Please enter your contact number.'
-                                  : null,
+                              validator: InputValidation.phone,
                             ),
                             if (_selectedType == 'wedding') ...[
                               const SizedBox(height: 24),
@@ -1052,6 +1109,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
                               controller: _notes,
                               label: 'NOTES',
                               hint: 'Tell us about your celebration',
+                              validator: InputValidation.notes,
                               maxLines: 4,
                               textInputAction: TextInputAction.done,
                             ),
@@ -1105,16 +1163,15 @@ class _ReservationScreenState extends State<ReservationScreen> {
   /// folders as website uploads instead of sitting flat at the bucket root.
   Future<void> _uploadAttachment(
     int reservationId,
-    PlatformFile file,
+    PickedDocument file,
     String fieldKey,
     String label,
     String type,
   ) async {
-    final bytes = file.bytes;
-    if (bytes == null) return;
     final storage = Supabase.instance.client.storage.from('reservation-attachments');
-    final fileName = '$type/${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-    await storage.uploadBinary(fileName, bytes);
+    final fileName =
+        '$type/${DateTime.now().millisecondsSinceEpoch}_${InputValidation.safeFileName(file.name)}';
+    await storage.uploadBinary(fileName, file.bytes);
     final url = storage.getPublicUrl(fileName);
     await Supabase.instance.client.from('reservation_attachments').insert({
       'reservation_id': reservationId,
@@ -1133,6 +1190,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
       setSheetState(() => _extraError = extraError);
       return;
     }
+    // Sensitive action: confirm it's really the phone's owner.
+    if (!await AppLock.confirm('Confirm your reservation request')) return;
     setSheetState(() {
       _extraError = null;
       _submitting = true;
@@ -1342,7 +1401,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       appBar: AppBar(
         title: const Text('ParishSched'),
         automaticallyImplyLeading: false,
-        actions: const [NotificationBell(), SizedBox(width: 4), LogoutButton()],
+        actions: const [AccountButton(), NotificationBell(), SizedBox(width: 4), LogoutButton()],
       ),
       bottomNavigationBar: const AppBottomNav(current: null),
       body: SingleChildScrollView(
@@ -1697,7 +1756,7 @@ class _NoteBullet extends StatelessWidget {
 
 class _FilePickerField extends StatelessWidget {
   final String label;
-  final PlatformFile? file;
+  final PickedDocument? file;
   final VoidCallback onPick;
   const _FilePickerField({required this.label, required this.file, required this.onPick});
 

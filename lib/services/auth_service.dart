@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/api_config.dart';
+import '../security/secure_session_storage.dart';
 
 /// Thrown for any auth/registration failure, carrying a message that's
 /// already safe to show to the user.
@@ -68,7 +69,13 @@ class AuthService {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': name, 'address': address},
+        data: {
+          'full_name': name,
+          'address': address,
+          // Privacy Policy consent (required by the register screen).
+          'privacy_consent_at': DateTime.now().toUtc().toIso8601String(),
+          'privacy_policy_version': 'October 2026',
+        },
       );
       final authId = response.user?.id;
       if (authId == null) {
@@ -165,6 +172,71 @@ class AuthService {
   }
 
   Future<void> signOut() => _client.auth.signOut();
+
+  /// Permanently deletes the signed-in account and its data through
+  /// church-web's /api/mobile-delete-account (only the server holds the
+  /// service-role key needed to remove a login). The request is
+  /// authenticated with the user's own access token. Then wipes this
+  /// phone's local app data.
+  Future<void> deleteAccount() async {
+    final token = currentSession?.accessToken;
+    if (token == null) throw AuthFailure('Please sign in again.');
+    final http.Response response;
+    try {
+      response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}/api/mobile-delete-account'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (_) {
+      throw AuthFailure('Could not reach the parish server. Please check your connection.');
+    }
+    if (response.statusCode != 200) {
+      throw AuthFailure(
+        _messageFromJson(response.body) ??
+            'We could not delete your account. Please try again later.',
+      );
+    }
+    try {
+      await _client.auth.signOut();
+    } catch (_) {
+      // The login was already deleted server-side; just drop it locally.
+    }
+    await wipeLocalAppData();
+  }
+
+  /// Everything the parish holds about the signed-in user in ParishSched:
+  /// their profile and their reservations (with uploaded document links).
+  Future<Map<String, dynamic>> fetchMyData() async {
+    final customer = await fetchCurrentCustomer();
+    final email = currentUser?.email;
+    final filters = [
+      if (customer?['id'] != null) 'customer_id.eq.${customer!['id']}',
+      if (email != null) 'email.eq."$email"',
+    ];
+    List<dynamic> reservations = [];
+    if (filters.isNotEmpty) {
+      Future<List<dynamic>> query(String columns) => _client
+          .from('reservations')
+          .select(columns)
+          .or(filters.join(','))
+          .order('reservation_date', ascending: false);
+      try {
+        reservations = await query('*, reservation_attachments(label, file_url)');
+      } on PostgrestException {
+        // Attachments not readable/related for this user: reservations only.
+        reservations = await query('*');
+      }
+    }
+    return {
+      'profile': customer,
+      'reservations': reservations,
+    };
+  }
 
   /// church-web's own forgot-password flow calls Supabase Auth's admin API
   /// with the service-role key, which must never ship in this app. Supabase

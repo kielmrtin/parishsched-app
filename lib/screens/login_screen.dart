@@ -8,6 +8,8 @@ import '../widgets/pill_button.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
+import '../security/input_validation.dart';
+import '../security/secure_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,7 +18,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SecureScreenMixin {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -117,15 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _email,
                             label: 'Email',
                             keyboardType: TextInputType.emailAddress,
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) {
-                                return 'Email is required';
-                              }
-                              if (!v.contains('@')) {
-                                return 'Enter a valid email';
-                              }
-                              return null;
-                            },
+                            validator: InputValidation.email,
                           ),
                           const SizedBox(height: 16),
                           AuthField(

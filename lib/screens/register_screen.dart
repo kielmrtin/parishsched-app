@@ -8,6 +8,9 @@ import '../widgets/auth_field.dart';
 import '../widgets/auth_hero.dart';
 import '../widgets/pill_button.dart';
 import 'login_screen.dart';
+import '../security/input_validation.dart';
+import '../security/secure_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,7 +19,8 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _RegisterScreenState extends State<RegisterScreen>
+    with SecureScreenMixin {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _email = TextEditingController();
@@ -27,6 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _otp = TextEditingController();
   bool _loading = false;
   bool _sendingOtp = false;
+  bool _agreedToPrivacy = false;
   int _resendSeconds = 0;
   Timer? _resendTimer;
 
@@ -193,7 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             hint: 'Maria Santos',
                             validator: (v) => (v == null || v.trim().isEmpty)
                                 ? 'Full name is required'
-                                : null,
+                                : InputValidation.name(v),
                           ),
                           const SizedBox(height: 14),
                           AuthField(
@@ -201,15 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             label: 'Email',
                             hint: 'you@email.com',
                             keyboardType: TextInputType.emailAddress,
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) {
-                                return 'Email is required';
-                              }
-                              if (!v.contains('@')) {
-                                return 'Enter a valid email';
-                              }
-                              return null;
-                            },
+                            validator: InputValidation.email,
                           ),
                           const SizedBox(height: 14),
                           AuthField(
@@ -217,6 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             label: 'Phone Number',
                             hint: '09XX XXX XXXX',
                             keyboardType: TextInputType.phone,
+                            validator: InputValidation.phone,
                           ),
                           Align(
                             alignment: Alignment.centerRight,
@@ -254,27 +252,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             controller: _address,
                             label: 'Home Address',
                             hint: 'Barangay, Municipality, Province',
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Address is required'
-                                : null,
+                            validator: InputValidation.address,
                           ),
                           const SizedBox(height: 14),
                           AuthField(
                             controller: _password,
                             label: 'Password',
                             obscurable: true,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) {
-                                return 'Password is required';
-                              }
-                              if (v.length < 8) return 'At least 8 characters';
-                              return null;
-                            },
+                            validator: InputValidation.newPassword,
                           ),
                           const Padding(
                             padding: EdgeInsets.only(top: 3),
                             child: Text(
-                              'At least 8 characters',
+                              'At least 8 characters, with a letter and a number',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey,
@@ -291,10 +281,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ? 'Passwords do not match'
                                 : null,
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 12),
+                          // Data Privacy Act consent, required to register.
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Checkbox(
+                                value: _agreedToPrivacy,
+                                activeColor: AppColors.brand,
+                                onChanged: (v) =>
+                                    setState(() => _agreedToPrivacy = v ?? false),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Wrap(
+                                    children: [
+                                      const Text(
+                                        'I agree to the collection and use of my information as described in the ',
+                                        style: TextStyle(fontSize: 12.5),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const PrivacyPolicyScreen(),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Privacy Policy',
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: AppColors.brand,
+                                            fontWeight: FontWeight.w700,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                      const Text('.', style: TextStyle(fontSize: 12.5)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
                           PillButton(
                             label: 'Sign Up',
-                            onPressed: _otp.text.trim().length == 6
+                            onPressed: _otp.text.trim().length == 6 && _agreedToPrivacy
                                 ? _submit
                                 : null,
                             loading: _loading,

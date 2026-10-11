@@ -11,6 +11,9 @@ import '../widgets/notification_bell.dart';
 import '../widgets/sacrament_badge.dart';
 import 'inquire_screen.dart';
 import 'reservation_screen.dart';
+import '../security/secure_screen.dart';
+import '../security/app_lock.dart';
+import '../widgets/account_button.dart';
 
 /// Mirrors church-web's My Reservations page
 /// (resources/views/reservation/my-reservations.blade.php): filter chips,
@@ -25,7 +28,8 @@ class MyReservationsScreen extends StatefulWidget {
   State<MyReservationsScreen> createState() => _MyReservationsScreenState();
 }
 
-class _MyReservationsScreenState extends State<MyReservationsScreen> {
+class _MyReservationsScreenState extends State<MyReservationsScreen>
+    with SecureScreenMixin {
   late Future<List<Map<String, dynamic>>> _future;
   String _filter = 'all';
 
@@ -71,6 +75,8 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
       builder: (context) => _CancelReasonDialog(),
     );
     if (reason == null) return; // dismissed
+    // Sensitive action: confirm it's really the phone's owner.
+    if (!await AppLock.confirm('Confirm cancellation request')) return;
 
     try {
       await Supabase.instance.client
@@ -106,7 +112,7 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
       appBar: AppBar(
         title: const Text('ParishSched'),
         automaticallyImplyLeading: false,
-        actions: const [NotificationBell(), SizedBox(width: 4), LogoutButton()],
+        actions: const [AccountButton(), NotificationBell(), SizedBox(width: 4), LogoutButton()],
       ),
       bottomNavigationBar: const AppBottomNav(current: null),
       body: Column(

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HTTPS only: every connection (Supabase, stjohnbaptistparish.org) must
+     be encrypted, and only the phone's built-in system CAs are trusted
+     (user-installed CAs, which interception proxies rely on, are not). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

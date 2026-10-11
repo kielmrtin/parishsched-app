@@ -12,6 +12,8 @@ import '../widgets/hero_kicker.dart';
 import '../widgets/hero_wave.dart';
 import '../widgets/logout_button.dart';
 import '../widgets/notification_bell.dart';
+import '../security/input_validation.dart';
+import '../widgets/account_button.dart';
 
 /// Mirrors church-web's Contact/Inquire page (resources/views/contact.blade.php):
 /// same hero copy, message form, and parish office details. Submitting posts
@@ -104,7 +106,7 @@ class _InquireScreenState extends State<InquireScreen> {
       appBar: AppBar(
         title: const Text('ParishSched'),
         automaticallyImplyLeading: false,
-        actions: const [NotificationBell(), SizedBox(width: 4), LogoutButton()],
+        actions: const [AccountButton(), NotificationBell(), SizedBox(width: 4), LogoutButton()],
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.inquire),
       body: SingleChildScrollView(
@@ -236,8 +238,9 @@ class _FormSection extends StatelessWidget {
               required: true,
               hint: 'Full name',
               textInputAction: TextInputAction.next,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Please enter your name.' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Please enter your name.'
+                  : InputValidation.name(v),
             ),
             const SizedBox(height: 18),
             BoxedField(
@@ -247,11 +250,7 @@ class _FormSection extends StatelessWidget {
               hint: 'name@example.com',
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Please enter your email.';
-                if (!v.contains('@')) return 'Please enter a valid email.';
-                return null;
-              },
+              validator: InputValidation.email,
             ),
             const SizedBox(height: 18),
             BoxedField(
@@ -260,6 +259,9 @@ class _FormSection extends StatelessWidget {
               hint: '(042) 545-9244',
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
+              // Optional here (church-web: phone nullable), but checked if given.
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? null : InputValidation.phone(v),
             ),
             const SizedBox(height: 18),
             BoxedField(
@@ -269,8 +271,7 @@ class _FormSection extends StatelessWidget {
               hint: 'How can we help you?',
               maxLines: 5,
               textInputAction: TextInputAction.done,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Please enter a message.' : null,
+              validator: InputValidation.message,
             ),
             const SizedBox(height: 24),
             SizedBox(

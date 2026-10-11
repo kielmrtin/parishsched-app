@@ -7,6 +7,7 @@ import '../widgets/hero_wave.dart';
 import '../widgets/logout_button.dart';
 import '../widgets/notification_bell.dart';
 import 'inquire_screen.dart';
+import '../widgets/account_button.dart';
 
 /// Content pulled from church-web's real About page (pages/about.blade.php):
 /// same history, mission, pastoral team, and contact details.
@@ -20,7 +21,7 @@ class AboutScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('ParishSched'),
         automaticallyImplyLeading: false,
-        actions: const [NotificationBell(), SizedBox(width: 4), LogoutButton()],
+        actions: const [AccountButton(), NotificationBell(), SizedBox(width: 4), LogoutButton()],
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.about),
       body: SingleChildScrollView(

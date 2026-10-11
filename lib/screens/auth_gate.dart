@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../security/update_check.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'welcome_screen.dart';
@@ -19,6 +20,8 @@ class _AuthGateState extends State<AuthGate> {
   bool _checking = true;
   bool _signedIn = false;
   bool _started = false;
+  // Set when this build is older than the website's app-version.json allows.
+  String? _updateUrl;
 
   static const _backgroundColor = Color(0xFF6E1B29);
 
@@ -33,6 +36,7 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _start() async {
     await Future.wait([
       _runAuthCheck(),
+      UpdateCheck.requiredUpdateUrl().then((url) => _updateUrl = url),
       // WelcomeScreen's full-bleed photo is decoded first so the fade into
       // it doesn't stutter on a decode mid-transition.
       precacheImage(const AssetImage('assets/images/welcome_bg.jpg'), context),
@@ -53,7 +57,9 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final Widget child = _checking
         ? const SizedBox.expand()
-        : (_signedIn ? const HomeScreen() : const WelcomeScreen());
+        : _updateUrl != null
+            ? UpdateRequiredScreen(downloadUrl: _updateUrl!)
+            : (_signedIn ? const HomeScreen() : const WelcomeScreen());
     // Maroon backing so the wait and the fade-in never show Flutter's
     // default black canvas.
     return ColoredBox(

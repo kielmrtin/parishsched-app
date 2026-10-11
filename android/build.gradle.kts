@@ -2,6 +2,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // freeRASP (Talsec) runtime app-protection SDK.
+        maven { url = uri("https://europe-west3-maven.pkg.dev/talsec-artifact-repository/freerasp") }
+        maven { url = uri("https://europe-west3-maven.pkg.dev/talsec-artifact-repository/common") }
     }
 }
 
